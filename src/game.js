@@ -13,13 +13,14 @@ const music = createBumblebeeMusic();
 const settings = {
   slope: 0.364, // tan(20deg), stable climb grade
   groundMargin: 56,
-  playerWidth: 50,
-  playerHeight: 62,
+  playerWidth: 64,
+  playerHeight: 82,
   playerSpeed: 160, // px / sec
   maxProgress: 2200,
   enemySpeed: 130,
   enemySpawnInterval: 1.2,
-  enemySize: 44,
+  enemyWidth: 42,
+  enemyHeight: 72,
   ballRadius: 16,
   ballGravity: 900,
   ballPower: 3.2,
@@ -103,7 +104,7 @@ function reset() {
   overlay.classList.remove("hidden");
   overlay.querySelector("h2").textContent = "Pull back to throw";
   overlay.querySelector("p").textContent =
-    "Touch Carol or near her, then pull back to throw.";
+    "Touch the rider (or near the scooter), then pull back to throw.";
 }
 
 function startGame() {
@@ -142,13 +143,14 @@ function completeLevel() {
 function spawnEnemy() {
   const bounds = getBounds();
   const x = player.dir > 0 ? bounds.right + 72 : bounds.left - 72;
-  const y = getGroundY(x) - settings.enemySize;
+  const y = getGroundY(x) - settings.enemyHeight;
 
   state.enemies.push({
     x,
     y,
-    width: settings.enemySize,
-    height: settings.enemySize,
+    width: settings.enemyWidth,
+    height: settings.enemyHeight,
+    phase: Math.random() * Math.PI * 2,
     hitAt: null,
   });
 }
@@ -224,6 +226,7 @@ function update(delta) {
       const speed = settings.enemySpeed + state.score * 2;
       enemy.x += enemyDirection * speed * delta;
       enemy.y = getGroundY(enemy.x) - enemy.height;
+      enemy.phase += delta * (4 + speed / 120);
       return enemy;
     })
     .filter((enemy) => {
@@ -238,15 +241,26 @@ function update(delta) {
       return true;
     });
 
-  // Enemy contact kills Carol.
+  // Enemy contact kills the rider.
   const pc = playerCenter();
   for (const enemy of state.enemies) {
     if (enemy.hitAt) continue;
-    const ex = enemy.x + enemy.width * 0.5;
-    const ey = enemy.y + enemy.height * 0.5;
-    const dist = Math.hypot(pc.x - ex, pc.y - ey);
-    if (dist < enemy.width * 0.5 + player.width * 0.3) {
-      endGame("Carol got caught!");
+    const hitPad = 6;
+    const enemyLeft = enemy.x + hitPad;
+    const enemyRight = enemy.x + enemy.width - hitPad;
+    const enemyTop = enemy.y + hitPad;
+    const enemyBottom = enemy.y + enemy.height - hitPad;
+    const playerLeft = player.x + 6;
+    const playerRight = player.x + player.width - 6;
+    const playerTop = player.y + 2;
+    const playerBottom = player.y + player.height;
+    const overlap =
+      playerRight > enemyLeft &&
+      playerLeft < enemyRight &&
+      playerBottom > enemyTop &&
+      playerTop < enemyBottom;
+    if (overlap) {
+      endGame("You got caught!");
       return;
     }
   }
@@ -275,9 +289,9 @@ function update(delta) {
       if (enemy.hitAt) continue;
 
       const dx = ball.x - (enemy.x + enemy.width / 2);
-      const dy = ball.y - (enemy.y + enemy.height / 2);
+      const dy = ball.y - (enemy.y + enemy.height * 0.45);
       const dist = Math.hypot(dx, dy);
-      if (dist < ball.radius + enemy.width / 2) {
+      if (dist < ball.radius + enemy.width * 0.45) {
         enemy.hitAt = performance.now();
         state.score += 1;
         scoreEl.textContent = state.score;
@@ -378,36 +392,70 @@ function draw() {
 
     ctx.save();
     ctx.translate(enemy.x + enemy.width * 0.5, enemy.y + enemy.height * 0.5);
+    const sway = Math.sin(enemy.phase) * 5;
+    const bob = Math.cos(enemy.phase * 2) * 1.8;
+    const armSwing = Math.sin(enemy.phase * 1.5) * 3.5;
+    ctx.translate(sway, bob);
+    ctx.rotate((Math.sin(enemy.phase) * 5 * Math.PI) / 180);
+
+    // Zombie torso
+    ctx.fillStyle = "#4d6b47";
+    ctx.fillRect(-14, -6, 28, 40);
+
+    // Ripped jacket
+    ctx.fillStyle = "#38435b";
+    ctx.fillRect(-11, 2, 22, 28);
+
+    // Arms
+    ctx.strokeStyle = "#7a9b63";
+    ctx.lineWidth = 5;
+    ctx.beginPath();
+    ctx.moveTo(-11, 8);
+    ctx.lineTo(-22 - armSwing, 18);
+    ctx.moveTo(11, 10);
+    ctx.lineTo(23 + armSwing, 22);
+    ctx.stroke();
+
+    // Legs
+    ctx.strokeStyle = "#2f3a4e";
+    ctx.lineWidth = 6;
+    ctx.beginPath();
+    ctx.moveTo(-6, 34);
+    ctx.lineTo(-10 - armSwing * 0.4, 46);
+    ctx.moveTo(6, 34);
+    ctx.lineTo(11 + armSwing * 0.4, 46);
+    ctx.stroke();
+
     // Zombie head
     ctx.fillStyle = "#88ad64";
     ctx.beginPath();
-    ctx.arc(0, 0, enemy.width * 0.5, 0, Math.PI * 2);
+    ctx.arc(0, -14, 14, 0, Math.PI * 2);
     ctx.fill();
 
     // Face shadow
     ctx.fillStyle = "rgba(0,0,0,0.15)";
     ctx.beginPath();
-    ctx.arc(0, 4, enemy.width * 0.35, 0, Math.PI * 2);
+    ctx.arc(0, -10, 10, 0, Math.PI * 2);
     ctx.fill();
 
     // Eyes
     ctx.fillStyle = "#f14242";
     ctx.beginPath();
-    ctx.arc(-8, -6, 3.5, 0, Math.PI * 2);
-    ctx.arc(8, -6, 3.5, 0, Math.PI * 2);
+    ctx.arc(-5, -16, 2.8, 0, Math.PI * 2);
+    ctx.arc(5, -15, 2.8, 0, Math.PI * 2);
     ctx.fill();
 
     // Mouth
     ctx.strokeStyle = "#2a3426";
-    ctx.lineWidth = 3;
+    ctx.lineWidth = 2;
     ctx.beginPath();
-    ctx.moveTo(-9, 9);
-    ctx.lineTo(9, 9);
+    ctx.moveTo(-6, -7);
+    ctx.lineTo(6, -6);
     ctx.stroke();
 
-    // Tattered shirt
-    ctx.fillStyle = "#425d7f";
-    ctx.fillRect(-10, 14, 20, 11);
+    // Bite mark
+    ctx.fillStyle = "#7a2a32";
+    ctx.fillRect(-2, 6, 5, 4);
     ctx.restore();
   });
 
@@ -427,11 +475,11 @@ function draw() {
     ctx.restore();
   });
 
-  // Player (Carol on scooter)
+  // Player on scooter
   const pc = playerCenter();
-  const wheelRadius = 9;
-  const deckWidth = 38;
-  const deckHeight = 8;
+  const wheelRadius = 11;
+  const deckWidth = 48;
+  const deckHeight = 10;
 
   ctx.save();
   ctx.translate(pc.x, pc.y);
@@ -440,65 +488,104 @@ function draw() {
   // Wheels
   ctx.fillStyle = "#111";
   ctx.beginPath();
-  ctx.arc(-18, 16, wheelRadius, 0, Math.PI * 2);
-  ctx.arc(18, 16, wheelRadius, 0, Math.PI * 2);
+  ctx.arc(-22, 22, wheelRadius, 0, Math.PI * 2);
+  ctx.arc(22, 22, wheelRadius, 0, Math.PI * 2);
   ctx.fill();
 
   ctx.fillStyle = "#666";
   ctx.beginPath();
-  ctx.arc(-18, 16, wheelRadius - 3, 0, Math.PI * 2);
-  ctx.arc(18, 16, wheelRadius - 3, 0, Math.PI * 2);
+  ctx.arc(-22, 22, wheelRadius - 3, 0, Math.PI * 2);
+  ctx.arc(22, 22, wheelRadius - 3, 0, Math.PI * 2);
   ctx.fill();
 
   // Deck
-  ctx.fillStyle = "#222";
-  ctx.fillRect(-deckWidth / 2, 8, deckWidth, deckHeight);
+  ctx.fillStyle = "#2a2a2a";
+  ctx.fillRect(-deckWidth / 2, 11, deckWidth, deckHeight);
 
   // Pole & handle
   ctx.strokeStyle = "#888";
   ctx.lineWidth = 6;
   ctx.beginPath();
-  ctx.moveTo(0, 8);
-  ctx.lineTo(0, -22);
+  ctx.moveTo(0, 11);
+  ctx.lineTo(0, -30);
   ctx.stroke();
 
   ctx.lineWidth = 5;
   ctx.beginPath();
-  ctx.moveTo(0, -22);
-  ctx.lineTo(-16, -30);
-  ctx.moveTo(0, -22);
-  ctx.lineTo(16, -30);
+  ctx.moveTo(0, -30);
+  ctx.lineTo(-16, -36);
+  ctx.moveTo(0, -30);
+  ctx.lineTo(16, -36);
   ctx.stroke();
 
-  // Torso and arms to make Carol clearly visible on scooter
-  ctx.fillStyle = "#1f2030";
-  ctx.fillRect(-8, -32, 16, 22);
-  ctx.strokeStyle = "#1f2030";
+  // Legs
+  ctx.strokeStyle = "#2d2f3f";
+  ctx.lineWidth = 5;
+  ctx.beginPath();
+  ctx.moveTo(-8, 8);
+  ctx.lineTo(-14, 14);
+  ctx.moveTo(8, 8);
+  ctx.lineTo(14, 14);
+  ctx.stroke();
+
+  // Torso and shoulders
+  ctx.fillStyle = "#f7b733";
+  ctx.fillRect(-11, -32, 22, 40);
+  ctx.fillStyle = "#20263f";
+  ctx.fillRect(-7, -26, 14, 20);
+
+  // Arms gripping the handlebar
+  ctx.strokeStyle = "#f7b733";
   ctx.lineWidth = 4;
   ctx.beginPath();
-  ctx.moveTo(-4, -20);
-  ctx.lineTo(-14, -26);
-  ctx.moveTo(4, -20);
-  ctx.lineTo(14, -26);
+  ctx.moveTo(-6, -20);
+  ctx.lineTo(-14, -34);
+  ctx.moveTo(6, -20);
+  ctx.lineTo(14, -34);
   ctx.stroke();
 
-  // Head
+  // Head and face
   ctx.fillStyle = "#f6c4d9";
   ctx.beginPath();
-  ctx.arc(0, -40, 10, 0, Math.PI * 2);
+  ctx.arc(0, -46, 12, 0, Math.PI * 2);
   ctx.fill();
 
-  // Bowling-ball helmet (pink shell with finger holes)
+  ctx.fillStyle = "#111";
+  ctx.beginPath();
+  ctx.arc(-4, -47, 1.4, 0, Math.PI * 2);
+  ctx.arc(4, -47, 1.4, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.strokeStyle = "#8a4d56";
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(-4, -41);
+  ctx.lineTo(4, -41);
+  ctx.stroke();
+
+  // Bowling-style helmet
   ctx.fillStyle = "#ff5fb5";
   ctx.beginPath();
-  ctx.arc(0, -40, 10, Math.PI * 1.1, Math.PI * 0.1, true);
+  ctx.arc(0, -47, 12, Math.PI * 1.05, Math.PI * 0.08, true);
   ctx.fill();
   ctx.fillStyle = "rgba(0,0,0,0.35)";
   ctx.beginPath();
-  ctx.arc(-4, -41, 1.3, 0, Math.PI * 2);
-  ctx.arc(0, -43, 1.3, 0, Math.PI * 2);
-  ctx.arc(4, -41, 1.3, 0, Math.PI * 2);
+  ctx.arc(-5, -48, 1.4, 0, Math.PI * 2);
+  ctx.arc(0, -50, 1.4, 0, Math.PI * 2);
+  ctx.arc(5, -48, 1.4, 0, Math.PI * 2);
   ctx.fill();
+
+  // Ponytail
+  ctx.strokeStyle = "#1a1a1a";
+  ctx.lineWidth = 4;
+  ctx.beginPath();
+  ctx.moveTo(-10, -45);
+  ctx.lineTo(-20, -38);
+  ctx.stroke();
+
+  // Label to make rider identity obvious in-game
+  ctx.fillStyle = "rgba(255,255,255,0.95)";
+  ctx.font = "bold 11px system-ui, sans-serif";
+  ctx.fillText("BOWLER", -24, -62);
 
   ctx.restore();
 

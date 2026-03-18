@@ -22,11 +22,20 @@ export class Input {
       // Pointer events and mouse events use clientX/clientY.
       // Touch events may be passed in (e.g. from older browsers) so we handle that too.
       const touch = event.changedTouches?.[0];
+      const rect = this.target.getBoundingClientRect();
+      const scaleX = this.target.width / rect.width;
+      const scaleY = this.target.height / rect.height;
       if (touch) {
-        return { x: touch.clientX, y: touch.clientY };
+        return {
+          x: (touch.clientX - rect.left) * scaleX,
+          y: (touch.clientY - rect.top) * scaleY,
+        };
       }
 
-      return { x: event.clientX, y: event.clientY };
+      return {
+        x: (event.clientX - rect.left) * scaleX,
+        y: (event.clientY - rect.top) * scaleY,
+      };
     };
 
     const onDown = (event) => {

@@ -5,6 +5,18 @@ const BUMBLEBEE_PATTERN = [
   76, 75, 73, 72, 73, 72, 71, 69,
   71, 72, 73, 75, 76, 75, 73, 72,
   73, 72, 71, 69, 71, 69, 68, 66,
+  69, 71, 72, 74, 76, 74, 72, 71,
+  72, 74, 76, 77, 79, 77, 76, 74,
+  76, 77, 79, 81, 83, 81, 79, 77,
+  79, 77, 76, 74, 76, 74, 72, 71,
+  72, 71, 69, 68, 69, 71, 72, 74,
+  76, 74, 72, 71, 72, 71, 69, 68,
+  71, 73, 74, 76, 78, 76, 74, 73,
+  74, 76, 78, 79, 81, 79, 78, 76,
+  78, 79, 81, 83, 84, 83, 81, 79,
+  81, 79, 78, 76, 78, 76, 74, 73,
+  74, 73, 71, 69, 71, 69, 68, 66,
+  68, 69, 71, 72, 74, 72, 71, 69,
 ];
 
 function midiToHz(midi) {
@@ -74,10 +86,12 @@ export function createBumblebeeMusic() {
 
     while (nextNoteTime < ctx.currentTime + scheduleAhead) {
       const note = BUMBLEBEE_PATTERN[stepIndex % BUMBLEBEE_PATTERN.length];
-      playLead(note, nextNoteTime);
+      if (note != null) {
+        playLead(note, nextNoteTime);
+      }
 
       if (stepIndex % 4 === 0) {
-        playBass(note, nextNoteTime);
+        playBass(note ?? 69, nextNoteTime);
       }
 
       stepIndex += 1;
