@@ -7,6 +7,8 @@ const ctx = canvas.getContext("2d");
 const scoreEl = document.getElementById("score");
 const bestEl = document.getElementById("best");
 const overlay = document.getElementById("overlay");
+const controlPad = document.getElementById("control-pad");
+const actionWindow = document.querySelector(".action-window");
 const musicToggle = document.getElementById("music-toggle");
 const music = createBumblebeeMusic();
 
@@ -22,10 +24,11 @@ const settings = {
   enemyWidth: 28,
   enemyHeight: 96,
   ballRadius: 16,
-  ballGravity: 340,
-  ballReturnDelay: 0.36,
-  ballHomingStrength: 1800,
-  ballPower: 3.2,
+  ballGravity: 120,
+  ballReturnDelay: 0.55,
+  ballReturnSpeed: 1900,
+  ballMinLaunchSpeed: 820,
+  ballMaxLaunchSpeed: 1580,
   ballLifetime: 4.2,
   hitBlink: 0.2,
 };
@@ -42,8 +45,7 @@ const state = {
   spawnTimer: 0,
   aim: {
     active: false,
-    start: { x: 0, y: 0 },
-    current: { x: 0, y: 0 },
+    pull: { x: 0, y: 0 },
   },
   status: "ready", // ready | playing | gameover | complete
 };
@@ -111,7 +113,7 @@ function reset() {
   overlay.classList.remove("hidden");
   overlay.querySelector("h2").textContent = "Pull back to throw";
   overlay.querySelector("p").textContent =
-    "Touch the rider (or near the scooter), then pull back to throw.";
+    "Desktop: click the game or control pad to start. Then drag on the control pad to throw.";
 }
 
 function startGame() {
@@ -162,19 +164,19 @@ function spawnEnemy() {
   });
 }
 
-function releaseBall(endPos) {
-  const center = playerCenter();
-  const pull = {
-    x: center.x - endPos.x,
-    y: center.y - endPos.y,
-  };
-
+function releaseBallFromPull(pull) {
   const raw = Math.hypot(pull.x, pull.y);
   const power = Math.min(1.1, raw / 140);
   if (power < 0.14) return; // ignore tiny drags
 
-  const vx = pull.x * settings.ballPower * power;
-  const vy = pull.y * settings.ballPower * power;
+  const dirX = pull.x / (raw || 1);
+  const dirY = pull.y / (raw || 1);
+  const speed =
+    settings.ballMinLaunchSpeed +
+    (settings.ballMaxLaunchSpeed - settings.ballMinLaunchSpeed) * power;
+  const vx = dirX * speed;
+  const vy = dirY * speed;
+  const center = playerCenter();
 
   state.balls.push({
     x: center.x,
@@ -183,14 +185,8 @@ function releaseBall(endPos) {
     vy,
     radius: settings.ballRadius,
     age: 0,
+    returning: false,
   });
-}
-
-function inPlayerArea(pos) {
-  const center = playerCenter();
-  const dx = pos.x - center.x;
-  const dy = pos.y - center.y;
-  return Math.hypot(dx, dy) < 92;
 }
 
 function update(delta) {
@@ -276,15 +272,19 @@ function update(delta) {
   state.balls = state.balls
     .map((ball) => {
       ball.age += delta;
-      ball.vy += settings.ballGravity * delta;
-      if (ball.age > settings.ballReturnDelay) {
+      if (!ball.returning) {
+        ball.vy += settings.ballGravity * delta;
+      }
+      if (!ball.returning && ball.age > settings.ballReturnDelay) {
+        ball.returning = true;
+      }
+      if (ball.returning) {
         const target = playerCenter();
         const toX = target.x - ball.x;
         const toY = target.y - ball.y;
         const dist = Math.hypot(toX, toY) || 1;
-        const steer = settings.ballHomingStrength * delta;
-        ball.vx += (toX / dist) * steer;
-        ball.vy += (toY / dist) * steer;
+        ball.vx = (toX / dist) * settings.ballReturnSpeed;
+        ball.vy = (toY / dist) * settings.ballReturnSpeed;
       }
       ball.x += ball.vx * delta;
       ball.y += ball.vy * delta;
@@ -329,10 +329,13 @@ function update(delta) {
 
 function drawAim() {
   if (!state.aim.active) return;
-  const start = state.aim.start;
-  const end = state.aim.current;
-  const dx = start.x - end.x;
-  const dy = start.y - end.y;
+  const start = playerCenter();
+  const dx = state.aim.pull.x;
+  const dy = state.aim.pull.y;
+  const end = {
+    x: start.x + dx * 0.35,
+    y: start.y + dy * 0.35,
+  };
   const power = Math.min(1.1, Math.hypot(dx, dy) / 140);
 
   ctx.save();
@@ -545,29 +548,29 @@ function draw() {
   ctx.stroke();
 
   // Legs
-  ctx.strokeStyle = "#2d2f3f";
-  ctx.lineWidth = 5;
+  ctx.strokeStyle = "#1f2233";
+  ctx.lineWidth = 6;
   ctx.beginPath();
   ctx.moveTo(-8, 8);
-  ctx.lineTo(-14, 14);
+  ctx.lineTo(-18, 16);
   ctx.moveTo(8, 8);
-  ctx.lineTo(14, 14);
+  ctx.lineTo(17, 16);
   ctx.stroke();
 
   // Torso and shoulders
   ctx.fillStyle = "#f7b733";
-  ctx.fillRect(-11, -32, 22, 40);
+  ctx.fillRect(-14, -36, 28, 46);
   ctx.fillStyle = "#20263f";
-  ctx.fillRect(-7, -26, 14, 20);
+  ctx.fillRect(-9, -30, 18, 24);
 
   // Arms gripping the handlebar
   ctx.strokeStyle = "#f7b733";
-  ctx.lineWidth = 4;
+  ctx.lineWidth = 5;
   ctx.beginPath();
-  ctx.moveTo(-6, -20);
-  ctx.lineTo(-14, -34);
-  ctx.moveTo(6, -20);
-  ctx.lineTo(14, -34);
+  ctx.moveTo(-7, -22);
+  ctx.lineTo(-16, -36);
+  ctx.moveTo(7, -22);
+  ctx.lineTo(16, -36);
   ctx.stroke();
 
   // Head and face
@@ -608,11 +611,6 @@ function draw() {
   ctx.lineTo(-20, -38);
   ctx.stroke();
 
-  // Label to make rider identity obvious in-game
-  ctx.fillStyle = "rgba(255,255,255,0.95)";
-  ctx.font = "bold 11px system-ui, sans-serif";
-  ctx.fillText("BOWLER", -24, -62);
-
   ctx.restore();
 
   // Aim line
@@ -638,8 +636,8 @@ function draw() {
 
 function bindInput() {
   const input = new Input(canvas);
+  const padInput = controlPad ? new Input(controlPad) : null;
 
-  // Allow starting the game by tapping the splash overlay (which covers the canvas)
   const startHandler = () => {
     if (!state.running) {
       reset();
@@ -647,9 +645,21 @@ function bindInput() {
     }
   };
 
-  overlay.addEventListener("pointerdown", startHandler);
-  overlay.addEventListener("click", startHandler);
-  overlay.addEventListener("touchstart", startHandler, { passive: true });
+  // Allow starting from overlay OR control pad so first-tap UX is forgiving.
+  const startTargets = [overlay, actionWindow, controlPad].filter(Boolean);
+  startTargets.forEach((target) => {
+    target.addEventListener("pointerdown", startHandler);
+    target.addEventListener("mousedown", startHandler);
+    target.addEventListener("click", startHandler);
+    target.addEventListener("touchstart", startHandler, { passive: true });
+  });
+
+  window.addEventListener("keydown", (event) => {
+    if (state.running) return;
+    if (event.code === "Space" || event.code === "Enter") {
+      startHandler();
+    }
+  });
 
   input.onTap(() => {
     if (!state.running) {
@@ -658,28 +668,34 @@ function bindInput() {
     }
   });
 
-  input.onDragStart((pos) => {
-    if (!state.running || state.status !== "playing") return;
-    if (!inPlayerArea(pos)) return;
+  if (padInput) {
+    padInput.onDragStart(() => {
+      if (!state.running || state.status !== "playing") return;
+      state.aim.active = true;
+      state.aim.pull = { x: 0, y: 0 };
+    });
 
-    state.aim.active = true;
-    state.aim.start = playerCenter();
-    state.aim.current = pos;
-  });
+    padInput.onDragMove((pos) => {
+      if (!state.aim.active || state.status !== "playing") return;
+      state.aim.pull = {
+        x: pos.start.x - pos.x,
+        y: pos.start.y - pos.y,
+      };
+    });
 
-  input.onDragMove((pos) => {
-    if (!state.aim.active) return;
-    state.aim.current = pos;
-  });
+    padInput.onDragEnd((pos) => {
+      if (!state.aim.active) return;
+      state.aim.active = false;
+      if (state.status !== "playing") return;
 
-  input.onDragEnd((pos) => {
-    if (!state.aim.active) return;
-    state.aim.active = false;
-
-    if (state.status === "playing") {
-      releaseBall(pos);
-    }
-  });
+      const pull = {
+        x: pos.start.x - pos.x,
+        y: pos.start.y - pos.y,
+      };
+      releaseBallFromPull(pull);
+      state.aim.pull = { x: 0, y: 0 };
+    });
+  }
 }
 
 function loadBestScore() {

@@ -15,16 +15,21 @@
     </header>
 
     <section class="game">
-      <canvas id="game" width="900" height="500" aria-label="The Bowler game canvas"></canvas>
-      <div class="hud">
-        <div class="hud-item">Score: <span id="score">0</span></div>
-        <div class="hud-item">Best: <span id="best">0</span></div>
-      </div>
-      <div class="overlay" id="overlay">
-        <div class="overlay-content">
-          <h2>Tap to Start</h2>
-          <p>Pull back from the rider to throw the pink bowling ball.</p>
+      <div class="action-window">
+        <canvas id="game" width="900" height="500" aria-label="The Bowler game canvas"></canvas>
+        <div class="hud">
+          <div class="hud-item">Score: <span id="score">0</span></div>
+          <div class="hud-item">Best: <span id="best">0</span></div>
         </div>
+        <div class="overlay" id="overlay">
+          <div class="overlay-content">
+            <h2>Tap to Start</h2>
+            <p>Use the control pad below: pull back and release to throw.</p>
+          </div>
+        </div>
+      </div>
+      <div class="control-pad" id="control-pad" aria-label="Throw control pad">
+        <p class="control-pad-label">Control Pad: Pull back and release</p>
       </div>
     </section>
 

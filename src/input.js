@@ -23,8 +23,11 @@ export class Input {
       // Touch events may be passed in (e.g. from older browsers) so we handle that too.
       const touch = event.changedTouches?.[0];
       const rect = this.target.getBoundingClientRect();
-      const scaleX = this.target.width / rect.width;
-      const scaleY = this.target.height / rect.height;
+      const hasCanvasSpace =
+        typeof this.target.width === "number" &&
+        typeof this.target.height === "number";
+      const scaleX = hasCanvasSpace ? this.target.width / rect.width : 1;
+      const scaleY = hasCanvasSpace ? this.target.height / rect.height : 1;
       if (touch) {
         return {
           x: (touch.clientX - rect.left) * scaleX,
@@ -44,6 +47,13 @@ export class Input {
       if (event.cancelable) event.preventDefault();
 
       pointerId = event.pointerId ?? 1;
+      if (event.pointerId != null && this.target.setPointerCapture) {
+        try {
+          this.target.setPointerCapture(event.pointerId);
+        } catch {
+          // Ignore capture failures on unsupported/edge cases.
+        }
+      }
       start = getPoint(event);
       last = { ...start };
       moved = false;
@@ -63,7 +73,7 @@ export class Input {
         moved = true;
       }
       last = point;
-      this._emit("dragmove", { ...point });
+      this._emit("dragmove", { ...point, start: { ...start } });
     };
 
     const onUp = (event) => {
@@ -83,6 +93,13 @@ export class Input {
         this._emit("dragend", { ...end, start: { ...start } });
       }
 
+      if (event.pointerId != null && this.target.releasePointerCapture) {
+        try {
+          this.target.releasePointerCapture(event.pointerId);
+        } catch {
+          // Ignore release failures on unsupported/edge cases.
+        }
+      }
       pointerId = null;
     };
 

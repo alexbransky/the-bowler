@@ -22,6 +22,7 @@ body {
   justify-content: center;
   align-items: flex-start;
   padding: 0.4rem;
+  overscroll-behavior-x: none;
 }
 
 main {
@@ -66,9 +67,19 @@ main {
 .game {
   position: relative;
   flex: 1;
+  min-height: 70vh;
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+
+.action-window {
+  position: relative;
+  flex: 1;
   border-radius: var(--radius);
   overflow: hidden;
   box-shadow: 0 10px 30px var(--shadow);
+  min-height: 58vh;
 }
 
 canvas {
@@ -77,6 +88,28 @@ canvas {
   height: auto;
   max-height: 94vh;
   background: linear-gradient(180deg, #10182e 0%, #0b0f1c 55%, #0b1022 100%);
+}
+
+.control-pad {
+  min-height: 110px;
+  border-radius: var(--radius);
+  border: 1px solid rgba(255, 221, 87, 0.25);
+  background:
+    radial-gradient(circle at 20% 20%, rgba(255, 221, 87, 0.09) 0%, transparent 45%),
+    linear-gradient(180deg, rgba(9, 15, 33, 0.92), rgba(8, 12, 26, 0.96));
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.04);
+  display: grid;
+  place-items: center;
+  user-select: none;
+  touch-action: none;
+  overscroll-behavior: contain;
+}
+
+.control-pad-label {
+  margin: 0;
+  opacity: 0.85;
+  font-weight: 600;
+  letter-spacing: 0.03em;
 }
 
 .hud {
