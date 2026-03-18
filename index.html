@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>The Bowler</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <main>
+    <header class="header">
+      <h1>The Bowler</h1>
+      <p class="subtitle">Swipe / tap to jump. Avoid obstacles and keep rolling!</p>
+    </header>
+
+    <section class="game">
+      <canvas id="game" width="900" height="500" aria-label="The Bowler game canvas"></canvas>
+      <div class="hud">
+        <div class="hud-item">Score: <span id="score">0</span></div>
+        <div class="hud-item">Best: <span id="best">0</span></div>
+      </div>
+      <div class="overlay" id="overlay">
+        <div class="overlay-content">
+          <h2>Tap to Start</h2>
+          <p>Swipe up to jump. Keep rolling and avoid obstacles.</p>
+        </div>
+      </div>
+    </section>
+
+    <footer class="footer">
+      <p>Made with HTML5 Canvas • Mobile-first</p>
+    </footer>
+  </main>
+
+  <script type="module" src="src/game.js"></script>
+</body>
+</html>
