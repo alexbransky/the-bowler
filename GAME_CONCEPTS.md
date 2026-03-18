@@ -5,7 +5,7 @@ This document records the core gameplay concepts and design assumptions so they 
 ## Core Concept
 - Mobile-first 2D scroller where the player climbs a sloped hill.
 - The player character is **Carol the Bowler**, riding a scooter.
-- The player moves automatically back-and-forth along the slope.
+- The scooter keeps moving forward automatically along the slope (no jump ability).
 
 ## Throwing Mechanic
 - The player throws a **pink bowling ball**.

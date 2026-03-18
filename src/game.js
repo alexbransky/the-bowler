@@ -48,7 +48,6 @@ const player = {
   y: 0,
   width: settings.playerWidth,
   height: settings.playerHeight,
-  dir: 1,
 };
 
 function resizeCanvas() {
@@ -93,7 +92,6 @@ function reset() {
 
   const bounds = getBounds();
   player.x = bounds.left;
-  player.dir = 1;
   player.y = getGroundY(player.x) - player.height + 2;
 
   scoreEl.textContent = state.score;
@@ -133,8 +131,7 @@ function completeLevel() {
 
 function spawnEnemy() {
   const bounds = getBounds();
-  const fromRight = player.dir > 0;
-  const x = fromRight ? bounds.right + 72 : bounds.left - 72;
+  const x = bounds.right + 72;
   const y = getGroundY(x) - settings.enemySize;
 
   state.enemies.push({
@@ -185,17 +182,14 @@ function update(delta) {
 
   const bounds = getBounds();
 
-  // Move player back-and-forth, rising over time
-  player.x += player.dir * settings.playerSpeed * delta;
-  if (player.dir > 0 && player.x > bounds.right) {
-    player.x = bounds.right;
-    player.dir = -1;
-    state.progress = Math.min(state.progress + settings.progressStep, settings.maxProgress);
-  }
-  if (player.dir < 0 && player.x < bounds.left) {
-    player.x = bounds.left;
-    player.dir = 1;
-    state.progress = Math.min(state.progress + settings.progressStep, settings.maxProgress);
+  // Keep the scooter moving forward; wrap to the left after crossing the right edge.
+  player.x += settings.playerSpeed * delta;
+  while (player.x > bounds.right) {
+    player.x = bounds.left + (player.x - bounds.right);
+    state.progress = Math.min(
+      state.progress + settings.progressStep,
+      settings.maxProgress
+    );
   }
   player.y = getGroundY(player.x) - player.height + 2;
 
@@ -211,7 +205,7 @@ function update(delta) {
   }
 
   // Update enemies
-  const enemyDirection = player.dir > 0 ? -1 : 1;
+  const enemyDirection = -1;
   state.enemies = state.enemies
     .map((enemy) => {
       const speed = settings.enemySpeed + state.score * 2;
