@@ -19,12 +19,14 @@ const settings = {
   maxProgress: 2200,
   enemySpeed: 130,
   enemySpawnInterval: 1.2,
-  enemyWidth: 42,
-  enemyHeight: 72,
+  enemyWidth: 28,
+  enemyHeight: 96,
   ballRadius: 16,
-  ballGravity: 900,
+  ballGravity: 340,
+  ballReturnDelay: 0.36,
+  ballHomingStrength: 1800,
   ballPower: 3.2,
-  ballLifetime: 3.2,
+  ballLifetime: 4.2,
   hitBlink: 0.2,
 };
 
@@ -57,7 +59,12 @@ const player = {
 function resizeCanvas() {
   const ratio = window.devicePixelRatio || 1;
   const width = canvas.clientWidth * ratio;
-  const height = Math.round(width * 0.56);
+  const viewportHeight = window.innerHeight * ratio;
+  const reservedUi = 220 * ratio;
+  const preferredHeight = viewportHeight - reservedUi;
+  const minHeight = width * 0.8;
+  const maxHeight = width * 1.2;
+  const height = Math.round(Math.min(maxHeight, Math.max(minHeight, preferredHeight)));
   canvas.width = width;
   canvas.height = height;
 }
@@ -270,17 +277,30 @@ function update(delta) {
     .map((ball) => {
       ball.age += delta;
       ball.vy += settings.ballGravity * delta;
+      if (ball.age > settings.ballReturnDelay) {
+        const target = playerCenter();
+        const toX = target.x - ball.x;
+        const toY = target.y - ball.y;
+        const dist = Math.hypot(toX, toY) || 1;
+        const steer = settings.ballHomingStrength * delta;
+        ball.vx += (toX / dist) * steer;
+        ball.vy += (toY / dist) * steer;
+      }
       ball.x += ball.vx * delta;
       ball.y += ball.vy * delta;
       return ball;
     })
     .filter((ball) => {
+      const target = playerCenter();
+      const caughtOnReturn =
+        ball.age > settings.ballReturnDelay + 0.18 &&
+        Math.hypot(ball.x - target.x, ball.y - target.y) < player.width * 0.42;
       const outOfBounds =
         ball.x < -80 ||
         ball.x > canvas.width + 80 ||
         ball.y > canvas.height + 120 ||
         ball.age > settings.ballLifetime;
-      return !outOfBounds;
+      return !outOfBounds && !caughtOnReturn;
     });
 
   // Ball vs enemy collisions
@@ -398,64 +418,70 @@ function draw() {
     ctx.translate(sway, bob);
     ctx.rotate((Math.sin(enemy.phase) * 5 * Math.PI) / 180);
 
-    // Zombie torso
-    ctx.fillStyle = "#4d6b47";
-    ctx.fillRect(-14, -6, 28, 40);
+    // Zombie torso (thin and tall)
+    ctx.fillStyle = "#4f6a45";
+    ctx.fillRect(-9, -18, 18, 54);
 
-    // Ripped jacket
-    ctx.fillStyle = "#38435b";
-    ctx.fillRect(-11, 2, 22, 28);
+    // Ripped coat
+    ctx.fillStyle = "#2f394f";
+    ctx.fillRect(-8, -10, 16, 44);
 
     // Arms
     ctx.strokeStyle = "#7a9b63";
-    ctx.lineWidth = 5;
+    ctx.lineWidth = 4;
     ctx.beginPath();
-    ctx.moveTo(-11, 8);
-    ctx.lineTo(-22 - armSwing, 18);
-    ctx.moveTo(11, 10);
-    ctx.lineTo(23 + armSwing, 22);
+    ctx.moveTo(-8, -2);
+    ctx.lineTo(-18 - armSwing, 12);
+    ctx.moveTo(8, 0);
+    ctx.lineTo(18 + armSwing, 15);
     ctx.stroke();
 
     // Legs
-    ctx.strokeStyle = "#2f3a4e";
-    ctx.lineWidth = 6;
+    ctx.strokeStyle = "#2a3346";
+    ctx.lineWidth = 4;
     ctx.beginPath();
-    ctx.moveTo(-6, 34);
-    ctx.lineTo(-10 - armSwing * 0.4, 46);
-    ctx.moveTo(6, 34);
-    ctx.lineTo(11 + armSwing * 0.4, 46);
+    ctx.moveTo(-4, 36);
+    ctx.lineTo(-7 - armSwing * 0.35, 54);
+    ctx.moveTo(4, 36);
+    ctx.lineTo(8 + armSwing * 0.35, 55);
     ctx.stroke();
 
     // Zombie head
-    ctx.fillStyle = "#88ad64";
+    ctx.fillStyle = "#82a55f";
     ctx.beginPath();
-    ctx.arc(0, -14, 14, 0, Math.PI * 2);
+    ctx.ellipse(0, -25, 10, 13, 0, 0, Math.PI * 2);
     ctx.fill();
 
     // Face shadow
     ctx.fillStyle = "rgba(0,0,0,0.15)";
     ctx.beginPath();
-    ctx.arc(0, -10, 10, 0, Math.PI * 2);
+    ctx.ellipse(0, -22, 7, 8, 0, 0, Math.PI * 2);
     ctx.fill();
 
-    // Eyes
-    ctx.fillStyle = "#f14242";
+    // Hollow eyes
+    ctx.fillStyle = "#ff3a55";
     ctx.beginPath();
-    ctx.arc(-5, -16, 2.8, 0, Math.PI * 2);
-    ctx.arc(5, -15, 2.8, 0, Math.PI * 2);
+    ctx.arc(-3.5, -27, 2.2, 0, Math.PI * 2);
+    ctx.arc(3.8, -26, 2.1, 0, Math.PI * 2);
     ctx.fill();
 
-    // Mouth
-    ctx.strokeStyle = "#2a3426";
+    // Cracked mouth
+    ctx.strokeStyle = "#1e241d";
     ctx.lineWidth = 2;
     ctx.beginPath();
-    ctx.moveTo(-6, -7);
-    ctx.lineTo(6, -6);
+    ctx.moveTo(-4, -16);
+    ctx.lineTo(4, -15);
+    ctx.moveTo(0, -15);
+    ctx.lineTo(0, -11);
     ctx.stroke();
 
-    // Bite mark
-    ctx.fillStyle = "#7a2a32";
-    ctx.fillRect(-2, 6, 5, 4);
+    // Blood streak
+    ctx.strokeStyle = "#6d1d2a";
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(2, -12);
+    ctx.lineTo(5, -5);
+    ctx.stroke();
     ctx.restore();
   });
 

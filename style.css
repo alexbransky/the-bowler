@@ -26,11 +26,14 @@ body {
 
 main {
   width: min(1500px, 99vw);
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
 }
 
 .header {
   text-align: center;
-  margin-bottom: 1rem;
+  margin-bottom: 0.55rem;
 }
 
 .header h1 {
@@ -62,6 +65,7 @@ main {
 
 .game {
   position: relative;
+  flex: 1;
   border-radius: var(--radius);
   overflow: hidden;
   box-shadow: 0 10px 30px var(--shadow);
@@ -71,7 +75,7 @@ canvas {
   display: block;
   width: 100%;
   height: auto;
-  max-height: 88vh;
+  max-height: 94vh;
   background: linear-gradient(180deg, #10182e 0%, #0b0f1c 55%, #0b1022 100%);
 }
 
@@ -128,9 +132,9 @@ canvas {
 
 .footer {
   text-align: center;
-  margin-top: 0.8rem;
+  margin-top: 0.4rem;
   font-size: 0.9rem;
-  opacity: 0.7;
+  opacity: 0.62;
 }
 
 @media (prefers-reduced-motion: reduce) {
