@@ -1,4 +1,5 @@
 import { Input } from "./input.js";
+import { createBumblebeeMusic } from "./music.js";
 
 const canvas = document.getElementById("game");
 const ctx = canvas.getContext("2d");
@@ -6,6 +7,8 @@ const ctx = canvas.getContext("2d");
 const scoreEl = document.getElementById("score");
 const bestEl = document.getElementById("best");
 const overlay = document.getElementById("overlay");
+const musicToggle = document.getElementById("music-toggle");
+const music = createBumblebeeMusic();
 
 const settings = {
   slope: 0.55, // rise / run
@@ -103,6 +106,11 @@ function reset() {
 
 function startGame() {
   if (state.running) return;
+
+  // Must run from a user gesture for mobile browser audio policies.
+  music.start().catch(() => {
+    // Ignore transient audio start failures; user can retry on next tap.
+  });
 
   state.running = true;
   state.status = "playing";
@@ -535,6 +543,13 @@ function init() {
   loadBestScore();
   reset();
   bindInput();
+
+  if (musicToggle) {
+    musicToggle.addEventListener("click", () => {
+      const isMuted = music.toggleMute();
+      musicToggle.textContent = isMuted ? "Music: Off" : "Music: On";
+    });
+  }
 
   window.addEventListener("resize", () => {
     resizeCanvas();

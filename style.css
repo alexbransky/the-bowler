@@ -44,6 +44,22 @@ main {
   opacity: 0.8;
 }
 
+.music-toggle {
+  margin-top: 0.75rem;
+  border: 1px solid rgba(255, 221, 87, 0.4);
+  background: rgba(11, 17, 32, 0.8);
+  color: var(--fg);
+  padding: 0.5rem 0.8rem;
+  border-radius: 999px;
+  font: inherit;
+  font-size: 0.9rem;
+  cursor: pointer;
+}
+
+.music-toggle:hover {
+  border-color: rgba(255, 221, 87, 0.8);
+}
+
 .game {
   position: relative;
   border-radius: var(--radius);
