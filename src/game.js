@@ -11,13 +11,12 @@ const musicToggle = document.getElementById("music-toggle");
 const music = createBumblebeeMusic();
 
 const settings = {
-  slope: 0.55, // rise / run
+  slope: 0.364, // tan(20deg), stable climb grade
   groundMargin: 56,
   playerWidth: 50,
   playerHeight: 62,
   playerSpeed: 160, // px / sec
-  progressStep: 52,
-  maxProgress: 520,
+  maxProgress: 2200,
   enemySpeed: 130,
   enemySpawnInterval: 1.2,
   enemySize: 44,
@@ -51,6 +50,7 @@ const player = {
   y: 0,
   width: settings.playerWidth,
   height: settings.playerHeight,
+  dir: 1,
 };
 
 function resizeCanvas() {
@@ -71,8 +71,8 @@ function getBounds() {
 function getGroundY(x) {
   const bounds = getBounds();
   const base = canvas.height - settings.groundMargin;
+  const dx = player.dir > 0 ? x - bounds.left : bounds.right - x;
   const slope = settings.slope;
-  const dx = x - bounds.left;
   return base - slope * dx - state.progress;
 }
 
@@ -95,13 +95,15 @@ function reset() {
 
   const bounds = getBounds();
   player.x = bounds.left;
+  player.dir = 1;
   player.y = getGroundY(player.x) - player.height + 2;
 
   scoreEl.textContent = state.score;
   bestEl.textContent = state.best;
   overlay.classList.remove("hidden");
   overlay.querySelector("h2").textContent = "Pull back to throw";
-  overlay.querySelector("p").textContent = "Aim the pink ball at marching enemies.";
+  overlay.querySelector("p").textContent =
+    "Touch Carol or near her, then pull back to throw.";
 }
 
 function startGame() {
@@ -134,12 +136,12 @@ function completeLevel() {
   overlay.querySelector("h2").textContent = "You made it!";
   overlay.querySelector(
     "p"
-  ).textContent = `Score: ${state.score} • Tap to run again.`;
+  ).textContent = `Score: ${state.score} | Tap to run again.`;
 }
 
 function spawnEnemy() {
   const bounds = getBounds();
-  const x = bounds.right + 72;
+  const x = player.dir > 0 ? bounds.right + 72 : bounds.left - 72;
   const y = getGroundY(x) - settings.enemySize;
 
   state.enemies.push({
@@ -179,7 +181,7 @@ function inPlayerArea(pos) {
   const center = playerCenter();
   const dx = pos.x - center.x;
   const dy = pos.y - center.y;
-  return Math.hypot(dx, dy) < 70;
+  return Math.hypot(dx, dy) < 92;
 }
 
 function update(delta) {
@@ -190,14 +192,17 @@ function update(delta) {
 
   const bounds = getBounds();
 
-  // Keep the scooter moving forward; wrap to the left after crossing the right edge.
-  player.x += settings.playerSpeed * delta;
-  while (player.x > bounds.right) {
-    player.x = bounds.left + (player.x - bounds.right);
-    state.progress = Math.min(
-      state.progress + settings.progressStep,
-      settings.maxProgress
-    );
+  // Donkey Kong-style switchback climb: same grade, direction flips at edges.
+  player.x += player.dir * settings.playerSpeed * delta;
+  const risePerTraverse = settings.slope * (bounds.right - bounds.left);
+  if (player.dir > 0 && player.x > bounds.right) {
+    player.x = bounds.right;
+    player.dir = -1;
+    state.progress = Math.min(state.progress + risePerTraverse, settings.maxProgress);
+  } else if (player.dir < 0 && player.x < bounds.left) {
+    player.x = bounds.left;
+    player.dir = 1;
+    state.progress = Math.min(state.progress + risePerTraverse, settings.maxProgress);
   }
   player.y = getGroundY(player.x) - player.height + 2;
 
@@ -213,7 +218,7 @@ function update(delta) {
   }
 
   // Update enemies
-  const enemyDirection = -1;
+  const enemyDirection = player.dir > 0 ? -1 : 1;
   state.enemies = state.enemies
     .map((enemy) => {
       const speed = settings.enemySpeed + state.score * 2;
@@ -232,6 +237,19 @@ function update(delta) {
 
       return true;
     });
+
+  // Enemy contact kills Carol.
+  const pc = playerCenter();
+  for (const enemy of state.enemies) {
+    if (enemy.hitAt) continue;
+    const ex = enemy.x + enemy.width * 0.5;
+    const ey = enemy.y + enemy.height * 0.5;
+    const dist = Math.hypot(pc.x - ex, pc.y - ey);
+    if (dist < enemy.width * 0.5 + player.width * 0.3) {
+      endGame("Carol got caught!");
+      return;
+    }
+  }
 
   // Update balls
   state.balls = state.balls
@@ -360,17 +378,36 @@ function draw() {
 
     ctx.save();
     ctx.translate(enemy.x + enemy.width * 0.5, enemy.y + enemy.height * 0.5);
-    ctx.fillStyle = "#c74c5c";
+    // Zombie head
+    ctx.fillStyle = "#88ad64";
     ctx.beginPath();
     ctx.arc(0, 0, enemy.width * 0.5, 0, Math.PI * 2);
     ctx.fill();
 
-    // eyes
-    ctx.fillStyle = "#111";
+    // Face shadow
+    ctx.fillStyle = "rgba(0,0,0,0.15)";
     ctx.beginPath();
-    ctx.arc(-8, -6, 4, 0, Math.PI * 2);
-    ctx.arc(8, -6, 4, 0, Math.PI * 2);
+    ctx.arc(0, 4, enemy.width * 0.35, 0, Math.PI * 2);
     ctx.fill();
+
+    // Eyes
+    ctx.fillStyle = "#f14242";
+    ctx.beginPath();
+    ctx.arc(-8, -6, 3.5, 0, Math.PI * 2);
+    ctx.arc(8, -6, 3.5, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Mouth
+    ctx.strokeStyle = "#2a3426";
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(-9, 9);
+    ctx.lineTo(9, 9);
+    ctx.stroke();
+
+    // Tattered shirt
+    ctx.fillStyle = "#425d7f";
+    ctx.fillRect(-10, 14, 20, 11);
     ctx.restore();
   });
 
@@ -392,13 +429,13 @@ function draw() {
 
   // Player (Carol on scooter)
   const pc = playerCenter();
-  const wheelRadius = 10;
+  const wheelRadius = 9;
   const deckWidth = 38;
   const deckHeight = 8;
 
   ctx.save();
   ctx.translate(pc.x, pc.y);
-  ctx.rotate(-Math.atan(settings.slope));
+  ctx.rotate(-Math.atan(settings.slope) * player.dir);
 
   // Wheels
   ctx.fillStyle = "#111";
@@ -433,16 +470,34 @@ function draw() {
   ctx.lineTo(16, -30);
   ctx.stroke();
 
+  // Torso and arms to make Carol clearly visible on scooter
+  ctx.fillStyle = "#1f2030";
+  ctx.fillRect(-8, -32, 16, 22);
+  ctx.strokeStyle = "#1f2030";
+  ctx.lineWidth = 4;
+  ctx.beginPath();
+  ctx.moveTo(-4, -20);
+  ctx.lineTo(-14, -26);
+  ctx.moveTo(4, -20);
+  ctx.lineTo(14, -26);
+  ctx.stroke();
+
   // Head
   ctx.fillStyle = "#f6c4d9";
   ctx.beginPath();
   ctx.arc(0, -40, 10, 0, Math.PI * 2);
   ctx.fill();
 
-  // Helmet (pink)
+  // Bowling-ball helmet (pink shell with finger holes)
   ctx.fillStyle = "#ff5fb5";
   ctx.beginPath();
   ctx.arc(0, -40, 10, Math.PI * 1.1, Math.PI * 0.1, true);
+  ctx.fill();
+  ctx.fillStyle = "rgba(0,0,0,0.35)";
+  ctx.beginPath();
+  ctx.arc(-4, -41, 1.3, 0, Math.PI * 2);
+  ctx.arc(0, -43, 1.3, 0, Math.PI * 2);
+  ctx.arc(4, -41, 1.3, 0, Math.PI * 2);
   ctx.fill();
 
   ctx.restore();
@@ -487,12 +542,6 @@ function bindInput() {
     if (!state.running) {
       reset();
       startGame();
-      return;
-    }
-
-    // If game is running but not yet complete, allow tap to throw a small tap shot
-    if (state.status === "playing") {
-      releaseBall(playerCenter());
     }
   });
 
