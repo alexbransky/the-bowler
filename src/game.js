@@ -469,6 +469,14 @@ function draw() {
 function bindInput() {
   const input = new Input(canvas);
 
+  // Allow starting the game by tapping the splash overlay (which covers the canvas)
+  overlay.addEventListener("pointerdown", () => {
+    if (!state.running) {
+      reset();
+      startGame();
+    }
+  });
+
   input.onTap(() => {
     if (!state.running) {
       reset();
