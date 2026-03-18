@@ -85,6 +85,8 @@ canvas {
   opacity: 1;
   transition: opacity 250ms ease;
   pointer-events: auto;
+  touch-action: manipulation;
+  z-index: 20;
 }
 
 .overlay.hidden {

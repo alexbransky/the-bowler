@@ -470,12 +470,16 @@ function bindInput() {
   const input = new Input(canvas);
 
   // Allow starting the game by tapping the splash overlay (which covers the canvas)
-  overlay.addEventListener("pointerdown", () => {
+  const startHandler = () => {
     if (!state.running) {
       reset();
       startGame();
     }
-  });
+  };
+
+  overlay.addEventListener("pointerdown", startHandler);
+  overlay.addEventListener("click", startHandler);
+  overlay.addEventListener("touchstart", startHandler, { passive: true });
 
   input.onTap(() => {
     if (!state.running) {
